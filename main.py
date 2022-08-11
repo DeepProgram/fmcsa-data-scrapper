@@ -26,19 +26,25 @@ def get_html_from_url(url: str, url_params: dict) -> Optional[str]:
     return response.text
 
 
-def process_html_with_soup(html_string: str, tag: str, attributes: dict, find_all: bool) -> ResultSet[BeautifulSoup]:
-    soup = BeautifulSoup(html_string, "html.parser")
-    processed_html = None
+def process_html_with_soup(html: str, tag: str, attributes: dict, find_all: bool) -> Optional[ResultSet[BeautifulSoup]]:
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+    except TypeError:
+        print("Got Invalid Response.... Please Change IP Or Check Internet Connection")
+        return None
+
     if find_all:
         try:
             processed_html = soup.find_all(tag, attrs=attributes)
         except Exception as e:
             print("Could Not Found Desired Element..Try After Changing IP..", e)
+            return None
     else:
         try:
             processed_html = soup.find(tag, attrs=attributes).contents
         except Exception as e:
             print("Could Not Found Desired Element..Try After Changing IP..", e)
+            return None
     return processed_html
 
 
@@ -121,8 +127,6 @@ def get_mc_record_from_mc_id(mc_id: str) -> Optional[ResultSet[BeautifulSoup]]:
     if html is None:
         return None
     all_td_element = process_html_with_soup(html, "td", {"class": "queryfield", "valign": "top"}, True)
-    if all_td_element is None:
-        return None
     return all_td_element
 
 
@@ -176,8 +180,8 @@ def main(file: IO):
     table_data = get_today_mc_register_menu()
     try:
         mc_number_elements = get_selected_register_list(table_data[0].input["value"])
-    except IndexError:
-        print("Couldn't Get Desired Page....Change IP And Try Again....")
+    except Exception as e:
+        print("Couldn't Get Desired Page....Change IP And Try Again....", e)
         return
     mc_number_list = get_mc_id_list_from_html(mc_number_elements)
     get_user_info_list(file, mc_number_list)
