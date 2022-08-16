@@ -97,23 +97,31 @@ def get_today_mc_register_menu() -> Optional[ResultSet]:
         "pv_vpath": "LIVIEW"
     }
     html = get_html_from_url("https://li-public.fmcsa.dot.gov/LIVIEW/pkg_menu.prc_menu", params)
+    if html is None:
+        return None
     register_table = process_html_with_soup(html, "td", {"valign": "top"}, find_all=True)
     return register_table
 
 
-def get_selected_register_list(date_in_string: str) -> BeautifulSoup:
+def get_selected_register_list(date_in_string: str) -> Optional[BeautifulSoup]:
     params = {
         "pd_date": date_in_string,
         "pv_vpath": "LIVIEW"
     }
     html = get_html_from_url("https://li-public.fmcsa.dot.gov/LIVIEW/PKG_register.prc_reg_detail", params)
-
+    if html is None:
+        return None
     mc_number_elements = process_html_with_soup(html, "th", {"scope": "row"}, True)
     return mc_number_elements
 
 
-def get_mc_id_list_from_html(mc_html_elements: BeautifulSoup) -> list:
-    return [mc_number_element.text.split("-")[1].strip() for mc_number_element in mc_html_elements]
+def get_mc_id_list_from_html(mc_html_elements: BeautifulSoup) -> Optional[list]:
+    try:
+        info_list = [mc_number_element.text.split("-")[1].strip() for mc_number_element in mc_html_elements]
+    except Exception as e:
+        print("Page May Have Changed MC_ID Position.... ", e)
+        return None
+    return info_list
 
 
 def get_mc_record_from_mc_id(mc_id: str) -> Optional[BeautifulSoup]:
@@ -145,8 +153,6 @@ def get_mc_id_user_info(us_dot: int) -> Optional[BeautifulSoup]:
     if html is None:
         return None
     info_elements = process_html_with_soup(html, "ul", {"class": "col1"}, False)
-    if info_elements is None:
-        return None
     return info_elements
 
 
@@ -182,11 +188,14 @@ def main(saved_file: IO):
     try:
         today_date = table_data[0].input["value"]
         mc_number_elements = get_selected_register_list(today_date)
+        if mc_number_elements is None:
+            return
     except Exception as e:
         print("Couldn't Get Desired Page....Change IP And Try Again....", e)
         return
     mc_number_list = get_mc_id_list_from_html(mc_number_elements)
-    get_user_info_list(saved_file, mc_number_list)
+    if mc_number_list is not None:
+        get_user_info_list(saved_file, mc_number_list)
 
 
 if __name__ == "__main__":
